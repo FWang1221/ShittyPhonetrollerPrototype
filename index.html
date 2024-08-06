@@ -20,7 +20,7 @@
     <script>
         let serverAddress = '';
         let lastSent = 0;
-        const maxRate = 1000 / 25; // 25 messages per second
+        const maxRate = 1000 / 10; // 10 messages per second
 
         document.getElementById('submitAddress').addEventListener('click', function() {
             serverAddress = document.getElementById('serverAddress').value.trim();
@@ -52,7 +52,7 @@
                 }
             };
             xhr.onerror = function () {
-                document.getElementById('error').textContent = 'Network error occurred.';
+                document.getElementById('error').textContent = 'Network error occurred: ';
             };
             xhr.send();
         }
