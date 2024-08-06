@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyroscope Data Sender</title>
+</head>
+<body>
+    <h1>Gyroscope Data Sender</h1>
+    <p>Your phone will send gyroscope data to the server every 0.1 seconds.</p>
+    <p id="error" style="color: red;"></p>
+
+    <label for="serverAddress">Server Address:</label>
+    <input type="text" id="serverAddress" placeholder="http://example.com:7777">
+    <button id="submitAddress">Set Address</button>
+
+    <script>
+        let serverAddress = '';
+        let lastSent = 0;
+        const maxRate = 1000 / 25; // 25 messages per second
+
+        document.getElementById('submitAddress').addEventListener('click', function() {
+            serverAddress = document.getElementById('serverAddress').value.trim();
+            if (!serverAddress) {
+                document.getElementById('error').textContent = 'Please enter a valid server address.';
+            } else {
+                document.getElementById('error').textContent = '';
+                console.log('Server address set to:', serverAddress);
+            }
+        });
+
+        // Function to send gyroscope data to the server
+        function sendGyroscopeData(alpha, beta, gamma) {
+            if (!serverAddress) {
+                document.getElementById('error').textContent = 'Server address is not set.';
+                return;
+            }
+
+            const url = `${serverAddress}/setCurrFloatArr?key=1&value_1=${alpha}&key=2&value_2=${beta}&key=3&value_3=${gamma}`;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', url, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function () {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    console.log('Server response:', xhr.responseText);
+                } else {
+                    document.getElementById('error').textContent = `Error: ${xhr.statusText}`;
+                }
+            };
+            xhr.onerror = function () {
+                document.getElementById('error').textContent = 'Network error occurred.';
+            };
+            xhr.send();
+        }
+
+        // Function to handle gyroscope data
+        function handleGyroscope(event) {
+            const currentTime = Date.now();
+            if (currentTime - lastSent >= maxRate) {
+                lastSent = currentTime;
+
+                const alpha = event.alpha.toFixed(2);
+                const beta = event.beta.toFixed(2);
+                const gamma = event.gamma.toFixed(2);
+
+                // Send data to the server
+                sendGyroscopeData(alpha, beta, gamma);
+            }
+        }
+
+        // Check for gyroscope support
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', handleGyroscope, false);
+        } else {
+            document.getElementById('error').textContent = 'DeviceOrientationEvent is not supported';
+        }
+    </script>
+</body>
+</html>
