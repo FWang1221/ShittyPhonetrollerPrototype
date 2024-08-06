@@ -3,24 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gyroscope Data Sender</title>
+    <title>Data Sender with Rate Control</title>
 </head>
 <body>
-    <h1>Gyroscope Data Sender</h1>
-    <p>Your phone will send gyroscope data to the server every 0.1 seconds.</p>
+    <h1>Data Sender with Rate Control</h1>
+    <p>Your phone will send data to the server at the rate specified below.</p>
     <p id="error" style="color: red;"></p>
 
     <label for="serverAddress">Server Address:</label>
     <input type="text" id="serverAddress" placeholder="http://example.com:7777">
     <button id="submitAddress">Set Address</button>
 
-    <h2>Gyroscope Data</h2>
-    <p id="gyroscopeData">Alpha: N/A | Beta: N/A | Gamma: N/A</p>
+    <h2>Send Rate</h2>
+    <label for="rateSlider">Rate (times per second): <span id="rateValue">10</span></label>
+    <input type="range" id="rateSlider" min="1" max="20" value="10">
+
+    <h2>Calibration</h2>
+    <button id="calibrateButton">Calibrate</button>
+    <p>Calibrated Offset: <span id="calibrationOffset">Alpha: N/A | Beta: N/A | Gamma: N/A</span></p>
+
+    <h2>Data</h2>
+    <p id="data">Alpha: N/A | Beta: N/A | Gamma: N/A</p>
 
     <script>
         let serverAddress = '';
         let lastSent = 0;
-        const maxRate = 1000 / 10; // 10 messages per second
+        let maxRate = 1000 / 10; // Initial rate: 10 messages per second
+
+        let calibration = { alpha: 0, beta: 0, gamma: 0 };
+        let calibrated = false;
 
         document.getElementById('submitAddress').addEventListener('click', function() {
             serverAddress = document.getElementById('serverAddress').value.trim();
@@ -32,8 +43,26 @@
             }
         });
 
-        // Function to send gyroscope data to the server
-        function sendGyroscopeData(alpha, beta, gamma) {
+        document.getElementById('rateSlider').addEventListener('input', function() {
+            const rate = this.value;
+            document.getElementById('rateValue').textContent = rate;
+            maxRate = 1000 / rate; // Calculate the interval based on the rate
+        });
+
+        document.getElementById('calibrateButton').addEventListener('click', function() {
+            calibration.alpha = currentAlpha;
+            calibration.beta = currentBeta;
+            calibration.gamma = currentGamma;
+            calibrated = true;
+
+            document.getElementById('calibrationOffset').textContent = `Alpha: ${calibration.alpha} | Beta: ${calibration.beta} | Gamma: ${calibration.gamma}`;
+            console.log('Calibration set:', calibration);
+        });
+
+        let currentAlpha = 0, currentBeta = 0, currentGamma = 0;
+
+        // Function to send data to the server
+        function sendData(alpha, beta, gamma) {
             if (!serverAddress) {
                 document.getElementById('error').textContent = 'Server address is not set.';
                 return;
@@ -47,37 +76,48 @@
             xhr.onload = function () {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     console.log('Server response:', xhr.responseText);
+                    document.getElementById('error').textContent = ''; // Clear any previous error messages
                 } else {
-                    document.getElementById('error').textContent = `Error: ${xhr.statusText}`;
+                    document.getElementById('error').textContent = `Error: ${xhr.statusText} (Status: ${xhr.status})`;
                 }
             };
             xhr.onerror = function () {
-                document.getElementById('error').textContent = 'Network error occurred: ';
+                document.getElementById('error').textContent = `Network error occurred: ${xhr.statusText}`;
             };
             xhr.send();
         }
 
         // Function to handle gyroscope data
-        function handleGyroscope(event) {
+        function handleData(event) {
             const currentTime = Date.now();
             if (currentTime - lastSent >= maxRate) {
                 lastSent = currentTime;
 
-                const alpha = event.alpha.toFixed(2);
-                const beta = event.beta.toFixed(2);
-                const gamma = event.gamma.toFixed(2);
+                currentAlpha = event.alpha ? event.alpha.toFixed(2) : 0;
+                currentBeta = event.beta ? event.beta.toFixed(2) : 0;
+                currentGamma = event.gamma ? event.gamma.toFixed(2) : 0;
 
-                // Update the display of gyroscope data
-                document.getElementById('gyroscopeData').textContent = `Alpha: ${alpha} | Beta: ${beta} | Gamma: ${gamma}`;
+                let adjustedAlpha = currentAlpha;
+                let adjustedBeta = currentBeta;
+                let adjustedGamma = currentGamma;
+
+                if (calibrated) {
+                    adjustedAlpha = (currentAlpha - calibration.alpha).toFixed(2);
+                    adjustedBeta = (currentBeta - calibration.beta).toFixed(2);
+                    adjustedGamma = (currentGamma - calibration.gamma).toFixed(2);
+                }
+
+                // Update the display of data
+                document.getElementById('data').textContent = `Alpha: ${adjustedAlpha} | Beta: ${adjustedBeta} | Gamma: ${adjustedGamma}`;
 
                 // Send data to the server
-                sendGyroscopeData(alpha, beta, gamma);
+                sendData(adjustedAlpha, adjustedBeta, adjustedGamma);
             }
         }
 
         // Check for gyroscope support
         if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', handleGyroscope, false);
+            window.addEventListener('deviceorientation', handleData, false);
         } else {
             document.getElementById('error').textContent = 'DeviceOrientationEvent is not supported';
         }
