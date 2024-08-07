@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Sender with Rate Control</title>
+    <title>Data Sender with Rate Control Websocket Edition</title>
 </head>
 <body>
     <h1>Data Sender with Rate Control Websocket Edition</h1>
@@ -16,7 +16,7 @@
 
     <h2>Send Rate</h2>
     <label for="rateSlider">Rate (times per second): <span id="rateValue">10</span></label>
-    <input type="range" id="rateSlider" min="3" max="40" value="15">
+    <input type="range" id="rateSlider" min="1" max="20" value="10">
 
     <h2>Calibration</h2>
     <button id="calibrateButton">Calibrate</button>
@@ -24,6 +24,12 @@
 
     <h2>Data</h2>
     <p id="data">Alpha: N/A | Beta: N/A | Gamma: N/A</p>
+
+    <!-- Custom Message Section -->
+    <h2>Send Custom Message</h2>
+    <label for="customMessage">Message:</label>
+    <input type="text" id="customMessage" placeholder="kv=4:7">
+    <button id="sendMessageButton">Send Message</button>
 
     <script>
         let serverAddress = '';
@@ -42,7 +48,6 @@
                 return;
             }
 
-            // Initialize WebSocket
             if (ws) {
                 ws.close();
             }
@@ -54,25 +59,19 @@
                 console.log('WebSocket connection established:', serverAddress);
             };
 
-            ws.onerror = function(event) {
-                document.getElementById('error').textContent = 'WebSocket error occurred.';
-                console.log('WebSocket error:', event);
-            };
-
-
             ws.onmessage = function(event) {
                 console.log('Server response:', event.data);
                 document.getElementById('error').textContent = ''; // Clear any previous error messages
             };
 
-            ws.onclose = function() {
+            ws.onclose = function(event) {
+                console.log('WebSocket connection closed', event);
                 document.getElementById('error').textContent = 'WebSocket connection closed.';
-                console.log('WebSocket connection closed');
             };
 
-            ws.onerror = function() {
+            ws.onerror = function(event) {
+                console.log('WebSocket error occurred', event);
                 document.getElementById('error').textContent = 'WebSocket error occurred.';
-                console.log('WebSocket error occurred');
             };
         });
 
@@ -92,9 +91,24 @@
             console.log('Calibration set:', calibration);
         });
 
+        document.getElementById('sendMessageButton').addEventListener('click', function() {
+            const customMessage = document.getElementById('customMessage').value.trim();
+            if (!customMessage) {
+                document.getElementById('error').textContent = 'Please enter a message to send.';
+                return;
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                document.getElementById('error').textContent = 'WebSocket connection is not open.';
+                return;
+            }
+
+            ws.send(customMessage);
+            console.log('Sent custom message:', customMessage);
+        });
+
         let currentAlpha = 0, currentBeta = 0, currentGamma = 0;
 
-        // Function to format key-value pairs for WebSocket
         function formatKeyValuePairs(alpha, beta, gamma) {
             const pairs = [
                 `kv=1:${alpha}`,
@@ -104,7 +118,6 @@
             return pairs.join('&');
         }
 
-        // Function to send data to the WebSocket server
         function sendData(alpha, beta, gamma) {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 document.getElementById('error').textContent = 'WebSocket connection is not open.';
@@ -116,7 +129,6 @@
             ws.send(message);
         }
 
-        // Function to handle gyroscope data
         function handleData(event) {
             const currentTime = Date.now();
             if (currentTime - lastSent >= maxRate) {
@@ -136,15 +148,12 @@
                     adjustedGamma = (currentGamma - calibration.gamma).toFixed(2);
                 }
 
-                // Update the display of data
                 document.getElementById('data').textContent = `Alpha: ${adjustedAlpha} | Beta: ${adjustedBeta} | Gamma: ${adjustedGamma}`;
 
-                // Send data to the WebSocket server
                 sendData(adjustedAlpha, adjustedBeta, adjustedGamma);
             }
         }
 
-        // Check for gyroscope support
         if (window.DeviceOrientationEvent) {
             window.addEventListener('deviceorientation', handleData, false);
         } else {
