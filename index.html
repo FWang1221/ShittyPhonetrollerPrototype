@@ -11,7 +11,7 @@
     <p id="error" style="color: red;"></p>
 
     <label for="serverAddress">Server Address:</label>
-    <input type="text" id="serverAddress" placeholder="http://example.com:7777">
+    <input type="text" id="serverAddress" placeholder="ws://example.com:7777">
     <button id="submitAddress">Set Address</button>
 
     <h2>Send Rate</h2>
@@ -33,14 +33,41 @@
         let calibration = { alpha: 0, beta: 0, gamma: 0 };
         let calibrated = false;
 
+        let ws;
+
         document.getElementById('submitAddress').addEventListener('click', function() {
             serverAddress = document.getElementById('serverAddress').value.trim();
             if (!serverAddress) {
                 document.getElementById('error').textContent = 'Please enter a valid server address.';
-            } else {
-                document.getElementById('error').textContent = '';
-                console.log('Server address set to:', serverAddress);
+                return;
             }
+
+            // Initialize WebSocket
+            if (ws) {
+                ws.close();
+            }
+
+            ws = new WebSocket(serverAddress);
+
+            ws.onopen = function() {
+                document.getElementById('error').textContent = '';
+                console.log('WebSocket connection established:', serverAddress);
+            };
+
+            ws.onmessage = function(event) {
+                console.log('Server response:', event.data);
+                document.getElementById('error').textContent = ''; // Clear any previous error messages
+            };
+
+            ws.onclose = function() {
+                document.getElementById('error').textContent = 'WebSocket connection closed.';
+                console.log('WebSocket connection closed');
+            };
+
+            ws.onerror = function() {
+                document.getElementById('error').textContent = 'WebSocket error occurred.';
+                console.log('WebSocket error occurred');
+            };
         });
 
         document.getElementById('rateSlider').addEventListener('input', function() {
@@ -61,30 +88,21 @@
 
         let currentAlpha = 0, currentBeta = 0, currentGamma = 0;
 
-        // Function to send data to the server
+        // Function to send data to the WebSocket server
         function sendData(alpha, beta, gamma) {
-            if (!serverAddress) {
-                document.getElementById('error').textContent = 'Server address is not set.';
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                document.getElementById('error').textContent = 'WebSocket connection is not open.';
                 return;
             }
 
-            const url = `${serverAddress}/setCurrFloatArr?key=1&value_1=${alpha}&key=2&value_2=${beta}&key=3&value_3=${gamma}`;
+            const message = JSON.stringify({
+                type: 'data',
+                alpha: alpha,
+                beta: beta,
+                gamma: gamma
+            });
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', url, true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onload = function () {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    console.log('Server response:', xhr.responseText);
-                    document.getElementById('error').textContent = ''; // Clear any previous error messages
-                } else {
-                    document.getElementById('error').textContent = `Error: ${xhr.statusText} (Status: ${xhr.status})`;
-                }
-            };
-            xhr.onerror = function () {
-                document.getElementById('error').textContent = `Network error occurred: ${xhr.statusText}`;
-            };
-            xhr.send();
+            ws.send(message);
         }
 
         // Function to handle gyroscope data
@@ -110,7 +128,7 @@
                 // Update the display of data
                 document.getElementById('data').textContent = `Alpha: ${adjustedAlpha} | Beta: ${adjustedBeta} | Gamma: ${adjustedGamma}`;
 
-                // Send data to the server
+                // Send data to the WebSocket server
                 sendData(adjustedAlpha, adjustedBeta, adjustedGamma);
             }
         }
