@@ -88,6 +88,16 @@
 
         let currentAlpha = 0, currentBeta = 0, currentGamma = 0;
 
+        // Function to format key-value pairs for WebSocket
+        function formatKeyValuePairs(alpha, beta, gamma) {
+            const pairs = [
+                `kv=1:${alpha}`,
+                `kv=2:${beta}`,
+                `kv=3:${gamma}`
+            ];
+            return pairs.join('&');
+        }
+
         // Function to send data to the WebSocket server
         function sendData(alpha, beta, gamma) {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -95,12 +105,7 @@
                 return;
             }
 
-            const message = JSON.stringify({
-                type: 'data',
-                alpha: alpha,
-                beta: beta,
-                gamma: gamma
-            });
+            const message = formatKeyValuePairs(alpha, beta, gamma);
 
             ws.send(message);
         }
