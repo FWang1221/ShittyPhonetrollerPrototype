@@ -54,6 +54,12 @@
                 console.log('WebSocket connection established:', serverAddress);
             };
 
+            ws.onerror = function(event) {
+                document.getElementById('error').textContent = 'WebSocket error occurred.';
+                console.log('WebSocket error:', event);
+            };
+
+
             ws.onmessage = function(event) {
                 console.log('Server response:', event.data);
                 document.getElementById('error').textContent = ''; // Clear any previous error messages
