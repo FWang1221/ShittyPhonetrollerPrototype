@@ -7,6 +7,10 @@ let calibrated = false;
 
 let ws;
 
+let velocity = { x: 0, y: 0, z: 0 }; // Velocity values
+let lastAcceleration = { x: 0, y: 0, z: 0 };
+let lastTime = 0;
+
 document.getElementById('submitAddress').addEventListener('click', function() {
     serverAddress = document.getElementById('serverAddress').value.trim();
     if (!serverAddress) {
@@ -76,25 +80,25 @@ document.getElementById('sendMessageButton').addEventListener('click', function(
 let currentAlpha = 0, currentBeta = 0, currentGamma = 0;
 let currentAccelX = 0, currentAccelY = 0, currentAccelZ = 0;
 
-function formatKeyValuePairs(alpha, beta, gamma, accelX, accelY, accelZ) {
+function formatKeyValuePairs(alpha, beta, gamma, velX, velY, velZ) {
     const pairs = [
         `kv=1:${alpha}`,
         `kv=2:${beta}`,
         `kv=3:${gamma}`,
-        `kv=4:${accelX}`,
-        `kv=5:${accelY}`,
-        `kv=6:${accelZ}`
+        `kv=4:${velX}`,
+        `kv=5:${velY}`,
+        `kv=6:${velZ}`
     ];
     return pairs.join('&');
 }
 
-function sendData(alpha, beta, gamma, accelX, accelY, accelZ) {
+function sendData(alpha, beta, gamma, velX, velY, velZ) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
         document.getElementById('error').textContent = 'WebSocket connection is not open.';
         return;
     }
 
-    const message = formatKeyValuePairs(alpha, beta, gamma, accelX, accelY, accelZ);
+    const message = formatKeyValuePairs(alpha, beta, gamma, velX, velY, velZ);
 
     ws.send(message);
 }
@@ -120,16 +124,24 @@ function handleOrientationData(event) {
 
         document.getElementById('data').textContent = `Alpha: ${adjustedAlpha} | Beta: ${adjustedBeta} | Gamma: ${adjustedGamma}`;
 
-        sendData(adjustedAlpha, adjustedBeta, adjustedGamma, currentAccelX, currentAccelY, currentAccelZ);
+        sendData(adjustedAlpha, adjustedBeta, adjustedGamma, velocity.x, velocity.y, velocity.z);
     }
 }
 
 function handleMotionData(event) {
-    currentAccelX = event.acceleration.x ? event.acceleration.x.toFixed(2) : 0;
-    currentAccelY = event.acceleration.y ? event.acceleration.y.toFixed(2) : 0;
-    currentAccelZ = event.acceleration.z ? event.acceleration.z.toFixed(2) : 0;
+    const currentTime = Date.now();
+    const deltaTime = (currentTime - lastTime) / 1000; // Time in seconds since the last event
 
-    document.getElementById('accelData').textContent = `Accel X: ${currentAccelX} | Accel Y: ${currentAccelY} | Accel Z: ${currentAccelZ}`;
+    if (lastTime !== 0) {
+        // Calculate velocity based on acceleration and time interval
+        velocity.x += (event.acceleration.x ? event.acceleration.x : 0) * deltaTime;
+        velocity.y += (event.acceleration.y ? event.acceleration.y : 0) * deltaTime;
+        velocity.z += (event.acceleration.z ? event.acceleration.z : 0) * deltaTime;
+    }
+
+    lastTime = currentTime;
+
+    document.getElementById('accelData').textContent = `Velocity X: ${velocity.x.toFixed(2)} | Velocity Y: ${velocity.y.toFixed(2)} | Velocity Z: ${velocity.z.toFixed(2)}`;
 }
 
 if (window.DeviceOrientationEvent) {
