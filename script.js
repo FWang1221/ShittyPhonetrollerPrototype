@@ -143,6 +143,8 @@ if (window.DeviceMotionEvent) {
 } else {
     document.getElementById('error').textContent = 'DeviceMotionEvent is not supported';
 }
+
+
 // Check if the browser supports the Web Speech API
 if ('webkitSpeechRecognition' in window) {
     const recognition = new webkitSpeechRecognition();
@@ -157,6 +159,9 @@ if ('webkitSpeechRecognition' in window) {
     recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
         console.log('Voice recognized:', transcript);
+
+        // Display the recognized voice input
+        document.getElementById('recognizedVoice').textContent = transcript;
 
         // Send the recognized speech via WebSocket
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -184,4 +189,3 @@ if ('webkitSpeechRecognition' in window) {
 } else {
     document.getElementById('error').textContent = 'Web Speech API is not supported by this browser.';
 }
-
