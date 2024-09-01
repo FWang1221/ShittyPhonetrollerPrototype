@@ -143,63 +143,45 @@ if (window.DeviceMotionEvent) {
 } else {
     document.getElementById('error').textContent = 'DeviceMotionEvent is not supported';
 }
-
-// Voice Recognition
-let recognition;
-let recognizing = false;
-
+// Check if the browser supports the Web Speech API
 if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false; // Capture single phrase
-    recognition.interimResults = false; // Final results only
+    const recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
 
     recognition.onstart = function() {
-        recognizing = true;
-        document.getElementById('voiceResult').textContent = 'Listening...';
+        console.log('Voice recognition started');
     };
 
     recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript.trim();
-        document.getElementById('voiceResult').textContent = `Recognized Voice: ${transcript}`;
-        sendVoiceData(transcript);
+        const transcript = event.results[0][0].transcript;
+        console.log('Voice recognized:', transcript);
+
+        // Send the recognized speech via WebSocket
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            const message = `skv=1:${transcript}`;
+            ws.send(message);
+            console.log('Sent voice message:', message);
+        } else {
+            document.getElementById('error').textContent = 'WebSocket connection is not open.';
+        }
     };
 
     recognition.onerror = function(event) {
-        console.error('Speech recognition error:', event.error);
+        console.log('Speech recognition error:', event.error);
         document.getElementById('error').textContent = 'Speech recognition error occurred.';
     };
 
     recognition.onend = function() {
-        recognizing = false;
-        document.getElementById('startVoiceButton').disabled = false;
-        document.getElementById('stopVoiceButton').disabled = true;
+        console.log('Voice recognition ended');
     };
-} else {
-    document.getElementById('error').textContent = 'SpeechRecognition is not supported in this browser.';
-}
 
-document.getElementById('startVoiceButton').addEventListener('click', function() {
-    if (!recognizing) {
+    // Start recognition when the user clicks the "Calibrate" button (or any other trigger you prefer)
+    document.getElementById('calibrateButton').addEventListener('click', function() {
         recognition.start();
-        document.getElementById('startVoiceButton').disabled = true;
-        document.getElementById('stopVoiceButton').disabled = false;
-    }
-});
-
-document.getElementById('stopVoiceButton').addEventListener('click', function() {
-    if (recognizing) {
-        recognition.stop();
-    }
-});
-
-function sendVoiceData(message) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        document.getElementById('error').textContent = 'WebSocket connection is not open.';
-        return;
-    }
-
-    const formattedMessage = `skv=1:${message}`;
-    ws.send(formattedMessage);
-    console.log('Sent voice message:', formattedMessage);
+    });
+} else {
+    document.getElementById('error').textContent = 'Web Speech API is not supported by this browser.';
 }
 
