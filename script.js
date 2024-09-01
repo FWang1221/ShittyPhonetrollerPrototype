@@ -143,3 +143,63 @@ if (window.DeviceMotionEvent) {
 } else {
     document.getElementById('error').textContent = 'DeviceMotionEvent is not supported';
 }
+
+// Voice Recognition
+let recognition;
+let recognizing = false;
+
+if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false; // Capture single phrase
+    recognition.interimResults = false; // Final results only
+
+    recognition.onstart = function() {
+        recognizing = true;
+        document.getElementById('voiceResult').textContent = 'Listening...';
+    };
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript.trim();
+        document.getElementById('voiceResult').textContent = `Recognized Voice: ${transcript}`;
+        sendVoiceData(transcript);
+    };
+
+    recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        document.getElementById('error').textContent = 'Speech recognition error occurred.';
+    };
+
+    recognition.onend = function() {
+        recognizing = false;
+        document.getElementById('startVoiceButton').disabled = false;
+        document.getElementById('stopVoiceButton').disabled = true;
+    };
+} else {
+    document.getElementById('error').textContent = 'SpeechRecognition is not supported in this browser.';
+}
+
+document.getElementById('startVoiceButton').addEventListener('click', function() {
+    if (!recognizing) {
+        recognition.start();
+        document.getElementById('startVoiceButton').disabled = true;
+        document.getElementById('stopVoiceButton').disabled = false;
+    }
+});
+
+document.getElementById('stopVoiceButton').addEventListener('click', function() {
+    if (recognizing) {
+        recognition.stop();
+    }
+});
+
+function sendVoiceData(message) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        document.getElementById('error').textContent = 'WebSocket connection is not open.';
+        return;
+    }
+
+    const formattedMessage = `skv=1:${message}`;
+    ws.send(formattedMessage);
+    console.log('Sent voice message:', formattedMessage);
+}
+
