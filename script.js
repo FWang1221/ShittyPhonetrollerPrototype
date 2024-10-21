@@ -205,7 +205,7 @@ function convertWsToHttp(wsUrl) {
 async function loadExternalContent(url) {
   try {
     const htmlFileLink = url + "/phonetrollerExtend.html";
-    const response = await fetch(htmlFileLinkl);
+    const response = await fetch(htmlFileLink);
     if (!response.ok) throw new Error('Network error');
     const html = await response.text();
     
