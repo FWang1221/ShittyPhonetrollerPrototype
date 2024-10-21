@@ -23,6 +23,9 @@ document.getElementById('submitAddress').addEventListener('click', function() {
     ws.onopen = function() {
         document.getElementById('error').textContent = '';
         console.log('WebSocket connection established:', serverAddress);
+        const httpServerAddress = convertWsToHttp(serverAddress);
+        loadExternalContent(httpServerAddress);
+        console.log('Loading external content:', serverAddress);
     };
 
     ws.onmessage = function(event) {
@@ -188,4 +191,32 @@ if ('webkitSpeechRecognition' in window) {
     });
 } else {
     document.getElementById('error').textContent = 'Web Speech API is not supported by this browser.';
+}
+function convertWsToHttp(wsUrl) {
+    // Check if the input is a valid WebSocket URL
+    if (wsUrl.startsWith('ws://')) {
+        return wsUrl.replace('ws://', 'http://');
+    } else if (wsUrl.startsWith('wss://')) {
+        return wsUrl.replace('wss://', 'https://');
+    } else {
+        throw new Error('Invalid WebSocket URL');
+    }
+}
+async function loadExternalContent(url) {
+  try {
+    const html = url + "/phonetrollerExtend.html";
+    const response = await fetch(html);
+    if (!response.ok) throw new Error('Network error');
+    const html = await response.text();
+    
+    // Insert the HTML into a placeholder element
+    document.getElementById('external-container').innerHTML = html;
+    
+    // After injecting the content, make sure external content knows about your API
+    if (typeof window.externalPageInit === 'function') {
+      window.externalPageInit(window.localAPI);
+    }
+  } catch (error) {
+    console.error('Failed to load external content:', error);
+  }
 }
