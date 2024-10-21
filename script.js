@@ -205,14 +205,25 @@ function convertWsToHttp(wsUrl) {
 async function loadExternalContent(url) {
   try {
     const htmlFileLink = url + "/phonetrollerExtend.html";
-    const response = await fetch(htmlFileLink);
-    if (!response.ok) throw new Error('Network error');
-    const html = await response.text();
+    const scriptFileLink = url + "/phonetrollerExtend.js";
     
-    // Insert the HTML into a placeholder element
+    // Fetch and inject the HTML content
+    const htmlResponse = await fetch(htmlFileLink);
+    if (!htmlResponse.ok) throw new Error('Network error');
+    const html = await htmlResponse.text();
     document.getElementById('external-container').innerHTML = html;
-    
-    // After injecting the content, make sure external content knows about your API
+
+    // Fetch and inject the JavaScript content
+    const scriptResponse = await fetch(scriptFileLink);
+    if (!scriptResponse.ok) throw new Error('Failed to load JS file');
+    const scriptText = await scriptResponse.text();
+
+    // Create a script element and run the JS code
+    const script = document.createElement('script');
+    script.textContent = scriptText;
+    document.body.appendChild(script);
+
+    // Once the JS file is loaded, ensure the external content knows about your API
     if (typeof window.externalPageInit === 'function') {
       window.externalPageInit(window.localAPI);
     }
